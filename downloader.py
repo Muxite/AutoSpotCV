@@ -61,25 +61,6 @@ def bot(term, max_runs, is_random, location, order, step):
     browser.quit()  # close driver
 
 
-# def menu():
-#     while True:
-#         term = str(input("TERM: "))
-#         loops = int(input("LOOPS: "))
-#         is_random = (str(input("RANDOM?[y/n] ")) == "y")
-#         processes_n = int(input("THREADS: "))
-#         location = str(input("LOCATION: "))
-#         if term == "0" or loops == 0 or processes_n == 0:
-#             break
-#         processes = []
-#         for i in range(0, processes_n):
-#             p = multiprocessing.Process(target=bot, args=(term, int(loops/processes_n+0.5),
-#                                                           is_random, location, i, processes_n))
-#             p.start()
-#             processes.append(p)
-#         for p in processes:
-#             p.join()
-
-
 def menu():
     while True:
         term = str(input("TERM: "))
