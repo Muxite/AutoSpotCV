@@ -17,16 +17,12 @@ os.chdir(r"D:\Github\AutoSpotCV")
 
 def bot(term, max_runs, is_random, location, order, step):
     google_images = 'https://images.google.ca/'
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--mute-audio")
-    browser = webdriver.Chrome(r'Chromedrivers/' + r"chromedriver" + str(order) + ".exe", options=options)
-    browser.maximize_window()
+    browser = webdriver.Chrome(r'chromedrivers/chromedriver'+str(order)+'.exe')
     browser.get(google_images)
-    search_bar = browser.find_element_by_xpath('//*[@id="APjFqb"]')  # get the search bar
+    search_bar = browser.find_element(By.XPATH, '//*[@id="APjFqb"]')  # get the search bar
     search_bar.send_keys(term)  # input the word
     search_bar.send_keys(Keys.RETURN)  # press enter
-    time.sleep(10)
+    time.sleep(3)
     for j in range(max_runs):  # start at order, skip by step
         i = j*step+order
         clickable = browser.find_elements(By.XPATH, '//div[contains(@jsname, "qQjpJ")]')  # minimal time (>20ms)
@@ -95,6 +91,3 @@ def alt_run(term, loops, is_random, threads_n, location):
     for t in threads:
         t.join()
     print(time.time() - very_start)
-
-
-menu()
