@@ -1,5 +1,8 @@
-# blob settings taken Bruno Capuano
-# the testing set is pictures of IVE members (6 members) and Naheed Nenshi
+# blob settings taken from Bruno Capuano
+# trained on a variety of faces (mostly celebrities) of different ethnicities.
+# it seems to struggle with telling some Asians apart (IVE members). It has a sensitivity of 100% on Whitney Houston.
+# I will make a histogram to show how good or bad it is for specific people.
+
 import os
 import cv2 as cv
 import numpy as np
@@ -7,6 +10,7 @@ import time
 from tqdm import tqdm
 import shutil
 import random
+from keras.preprocessing.image import ImageDataGenerator
 
 
 modelFile = r"face_rec\res10_300x300_ssd_iter_140000_fp16.caffemodel"
@@ -46,7 +50,19 @@ def face_detect_dnn(net, img, threshold=0.7):
     return face_boxes
 
 
-def preprocess(location):
+def inflate(inflater, img, fluff_amount):
+    # openCV has a shape of (height, width, channels), np has (samples, height, width, channels)
+    img_array = np.array(img)  # keras uses np arrays
+    img_array = np.expand_dims(img_array, axis=0)
+    fluff_images = [img_array]  # these are the augmented images (make sure to add original)
+    for i, batch in enumerate(inflater.flow(img_array, batch_size=1)):
+        fluff_images.append(batch[0])
+        if i > fluff_amount - 1:  # account for the original
+            break
+    return fluff_images
+
+
+def preprocess(location, train_ratio=1.0):
     features = []  # faces extracted from an image
     labels = []  # the number assigned to a person
     time_adder = 0
@@ -54,12 +70,26 @@ def preprocess(location):
     net = cv.dnn.readNetFromCaffe(configFile, modelFile)
     net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
+    inflater = ImageDataGenerator(
+        rotation_range=40,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=0.2,
+        zoom_range=0.2,
+        horizontal_flip=True,
+        fill_mode='nearest'
+    )
     people = os.listdir(location)  # Ex: inside face recognition/faces->['Yujin', 'Wonyoung',...]
     print(enumerate(people))
     for label, person in enumerate(people):
         path = os.path.join(location, person)
         print(f"Loading {person}")
-        for i, img_subpath in enumerate(tqdm(os.listdir(path), colour='#00ff00', ncols=100)):
+        img_paths = os.listdir(path)
+        random.shuffle(img_paths)  # Shuffle the image paths
+        if train_ratio < 1.0:  # if the dataset is to be made smaller
+            train_size = int(len(img_paths) * train_ratio)  # Calculate the number of images to use for training
+            img_paths = img_paths[:train_size]  # Select only the specified ratio of images
+        for i, img_subpath in enumerate(tqdm(img_paths, colour='#00ff00', ncols=100)):
             start_time = time.time()
             img_path = os.path.join(path, img_subpath)
             img = cv.imread(img_path)
@@ -75,8 +105,13 @@ def preprocess(location):
                 if bound_check(x1, y1, x2, y2, width, height):
                     sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
                     faces_roi = cv.resize(sub, (128, 128))
-                    features.append(faces_roi)
-                    labels.append(label)
+                    if train_ratio > 1.0:  # if the dataset needs to be made larger
+                        total = inflate(inflater, faces_roi, int(train_ratio))
+                        features.extend(total)
+                        labels.extend([label]*len(total))
+                    else:
+                        features.append(faces_roi)
+                        labels.append(label)
                 else:
                     # print(f"Face out of bounds: {img_path}")
                     pass
@@ -87,8 +122,8 @@ def preprocess(location):
     return features, labels, people
 
 
-def train(train_location=r'face_rec\faces', save_location=r'D:\face_trained.yml'):
-    features, labels, people = preprocess(train_location)
+def train(train_location=r'face_rec\faces', save_location=r'D:\face_trained.yml', train_ratio=1.0):
+    features, labels, people = preprocess(train_location, train_ratio=train_ratio)
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
     face_recognizer.train(features, labels)
     face_recognizer.save(save_location)
@@ -132,15 +167,10 @@ def test(test_location=r'face_rec\tests', read_location=r'D:\face_trained.yml'):
                     counters[person]['TP'] += 1  # true positive
                 else:
                     counters[person]['FN'] += 1  # false negative
-            else:
-                if person == people[predicted_label]:
-                    counters[person]['FP'] += 1  # false positive
-                else:
-                    counters[person]['TN'] += 1  # true negative
     for person, counter in counters.items():
         sensitivity = counter['TP'] / (counter['TP'] + counter['FN'])
-        specificity = counter['TN'] / (counter['TN'] + counter['FP'])
-        print(f"{person}: sensitivity = {sensitivity * 100}% and specificity = {specificity * 100}%")
+        #  specificity = counter['TN'] / (counter['TN'] + counter['FP'])
+        print(f"{person}: sensitivity = {sensitivity:.4f}")
     cv.waitKey(0)
 
 
@@ -179,4 +209,6 @@ def menu():
             break
 
 
-menu()
+#  menu()
+train(train_ratio=4)
+test()

@@ -96,4 +96,4 @@ def test():
     for char, counter in counters.items():
         sensitivity = counter['TP'] / (counter['TP'] + counter['FN'])
         specificity = counter['TN'] / (counter['TN'] + counter['FP'])
-        print(f"{character}: sensitivity = {sensitivity * 100}% and specificity = {specificity * 100}%")
+        print(f"{character}: sensitivity = {sensitivity:.4f}")
