@@ -53,11 +53,12 @@ def inflate(inflater, img, fluff_amount):
     # ensure the image is in BGR format
     fluff_images = [img]  # these are the augmented images (make sure to add original)
     img_array = np.expand_dims(img, axis=0)  # add batch dimension
-    for i, batch in enumerate(inflater.flow(img_array, batch_size=1)):
-        bgr = (batch[0]*255).astype(np.uint8)
-        fluff_images.append(bgr)
-        if i > fluff_amount - 1:  # account for the original
-            break
+    if fluff_amount > 1:
+        for i, batch in enumerate(inflater.flow(img_array, batch_size=1)):
+            if i > fluff_amount - 1:  # account for the original
+                break
+            bgr = (batch[0]*255).astype(np.uint8)
+            fluff_images.append(bgr)
     return fluff_images
 
 
@@ -95,11 +96,11 @@ def preprocess(location, train_ratio=1.0):
             if img is None:
                 # print(f"Could not read image: {img_path}")
                 continue
-            fluffed_images = inflate(inflater, img, train_ratio)  # artificially expand dataset
+            fluffed_images = inflate(inflater, img, fluff_amount=train_ratio)  # artificially expand dataset
             for fluff in fluffed_images:  # for every image created
                 face_boxes = face_detect_dnn(net, fluff, 0.4)  # get the location of faces
-                # cv.imshow("fluff", fluff)
-                # cv.waitKey(0)
+                cv.imshow("fluff", fluff)
+                cv.waitKey(0)
                 height = fluff.shape[0]
                 width = fluff.shape[1]
                 for (x1, y1, x2, y2) in face_boxes:  # for each location with a face
@@ -172,23 +173,6 @@ def test(test_location=r'face_rec\tests', read_location=r'C:\Users\mukch\face_tr
     cv.waitKey(0)
 
 
-def split_data(train_location=r"face_rec\faces", tests_location=r'face_rec\tests', split_ratio=0.1):
-    sub_folders = os.listdir(train_location)
-    for sub_folder in sub_folders:
-        train_sub_location = os.path.join(train_location, sub_folder)
-        test_sub_location = os.path.join(tests_location, sub_folder)
-        if not os.path.exists(test_sub_location):  # make sure the sub location destination exists
-            os.makedirs(test_sub_location)
-        files = os.listdir(train_sub_location)
-        random.shuffle(files)  # Shuffle files
-        split_index = int(len(files) * split_ratio)
-        test_partition = files[:split_index]  # get files before but not including the index
-
-        # move the partition to the test location
-        for image in test_partition:
-            shutil.move(os.path.join(train_sub_location, image), os.path.join(test_sub_location, image))
-
-
 def menu():
     print("Face Recognition for Files, Muk Chunpongtong 2024/7")
     print(f"Working Directory: {os. getcwd()}")
@@ -208,5 +192,5 @@ def menu():
 
 
 #  menu()
-train(train_ratio=2)
-test()
+# train(train_ratio=4)
+# test()
