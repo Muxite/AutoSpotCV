@@ -10,13 +10,12 @@ import time
 from tqdm import tqdm
 import shutil
 import random
-from keras.preprocessing.image import ImageDataGenerator
-
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 modelFile = r"face_rec\res10_300x300_ssd_iter_140000_fp16.caffemodel"
 configFile = r"face_rec\deploy.prototxt"
 # the program's directory is the big folder which contains the folder of stuff on github
-os.chdir(r"D:\GitHub\AutoSpotCV")
+os.chdir(r"C:\GitHub\AutoSpotCV")
 
 
 def constrain(corner1, corner2, end_corner):
@@ -51,12 +50,12 @@ def face_detect_dnn(net, img, threshold=0.7):
 
 
 def inflate(inflater, img, fluff_amount):
-    # openCV has a shape of (height, width, channels), np has (samples, height, width, channels)
-    img_array = np.array(img)  # keras uses np arrays
-    img_array = np.expand_dims(img_array, axis=0)
-    fluff_images = [img_array]  # these are the augmented images (make sure to add original)
+    # ensure the image is in BGR format
+    fluff_images = [img]  # these are the augmented images (make sure to add original)
+    img_array = np.expand_dims(img, axis=0)  # add batch dimension
     for i, batch in enumerate(inflater.flow(img_array, batch_size=1)):
-        fluff_images.append(batch[0])
+        bgr = (batch[0]*255).astype(np.uint8)
+        fluff_images.append(bgr)
         if i > fluff_amount - 1:  # account for the original
             break
     return fluff_images
@@ -71,58 +70,58 @@ def preprocess(location, train_ratio=1.0):
     net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
     inflater = ImageDataGenerator(
+        rescale=1. / 255,
         rotation_range=40,
         width_shift_range=0.2,
         height_shift_range=0.2,
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=True,
-        fill_mode='nearest'
+        fill_mode='nearest',
     )
     people = os.listdir(location)  # Ex: inside face recognition/faces->['Yujin', 'Wonyoung',...]
-    print(enumerate(people))
     for label, person in enumerate(people):
         path = os.path.join(location, person)
         print(f"Loading {person}")
         img_paths = os.listdir(path)
-        random.shuffle(img_paths)  # Shuffle the image paths
+        random.shuffle(img_paths)  # shuffle the image paths
         if train_ratio < 1.0:  # if the dataset is to be made smaller
             train_size = int(len(img_paths) * train_ratio)  # Calculate the number of images to use for training
             img_paths = img_paths[:train_size]  # Select only the specified ratio of images
-        for i, img_subpath in enumerate(tqdm(img_paths, colour='#00ff00', ncols=100)):
-            start_time = time.time()
+        for i, img_subpath in enumerate(img_paths):
+            start_time = time.time()  # set a timer
             img_path = os.path.join(path, img_subpath)
-            img = cv.imread(img_path)
+            img = cv.imread(img_path)  # get an image
             if img is None:
                 # print(f"Could not read image: {img_path}")
                 continue
-            face_boxes = face_detect_dnn(net, img, 0.4)
-            images_count += 1
-            height = img.shape[0]
-            width = img.shape[1]
-            for (x1, y1, x2, y2) in face_boxes:
-                # add the face only if the face is in bounds
-                if bound_check(x1, y1, x2, y2, width, height):
-                    sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
-                    faces_roi = cv.resize(sub, (128, 128))
-                    if train_ratio > 1.0:  # if the dataset needs to be made larger
-                        total = inflate(inflater, faces_roi, int(train_ratio))
-                        features.extend(total)
-                        labels.extend([label]*len(total))
+            fluffed_images = inflate(inflater, img, train_ratio)  # artificially expand dataset
+            for fluff in fluffed_images:  # for every image created
+                face_boxes = face_detect_dnn(net, fluff, 0.4)  # get the location of faces
+                # cv.imshow("fluff", fluff)
+                # cv.waitKey(0)
+                height = fluff.shape[0]
+                width = fluff.shape[1]
+                for (x1, y1, x2, y2) in face_boxes:  # for each location with a face
+                    # add the face only if the face is in bounds
+                    if bound_check(x1, y1, x2, y2, width, height):
+                        images_count += 1  # count it as a trained-upon face
+                        sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)  # train on grays
+                        gray_face = cv.resize(sub, (128, 128))  # 128 apparently works well
+                        features.append(gray_face)  # add the gray face to the training dataset
+                        labels.append(label)  # label it appropriately (as a number)
                     else:
-                        features.append(faces_roi)
-                        labels.append(label)
-                else:
-                    # print(f"Face out of bounds: {img_path}")
-                    pass
-            time_adder += time.time()-start_time
+                        # print(f"Face out of bounds: {img_path}")
+                        pass
+                time_adder += time.time()-start_time
+    print(f"Trained with {images_count} images")
     print(f"Average Time Per Image: {time_adder/images_count}s")
     features = np.array(features)
     labels = np.array(labels)
     return features, labels, people
 
 
-def train(train_location=r'face_rec\faces', save_location=r'D:\face_trained.yml', train_ratio=1.0):
+def train(train_location=r'face_rec\faces', save_location=r'C:\Users\mukch\face_trained.yml', train_ratio=1.0):
     features, labels, people = preprocess(train_location, train_ratio=train_ratio)
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
     face_recognizer.train(features, labels)
@@ -131,7 +130,7 @@ def train(train_location=r'face_rec\faces', save_location=r'D:\face_trained.yml'
     # np.save('face recognition/labels.npy', labels)
 
 
-def test(test_location=r'face_rec\tests', read_location=r'D:\face_trained.yml'):
+def test(test_location=r'face_rec\tests', read_location=r'C:\Users\mukch\face_trained.yml'):
     net = cv.dnn.readNetFromCaffe(configFile, modelFile)
     net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
@@ -142,7 +141,6 @@ def test(test_location=r'face_rec\tests', read_location=r'D:\face_trained.yml'):
     debug_counter = 0
     for feature, label in zip(features, labels):
         predicted_label, confidence = face_recognizer.predict(feature)
-
         if debug_counter in range(0, 3):
             cv.putText(feature,
                        str(people[predicted_label]),
@@ -159,7 +157,7 @@ def test(test_location=r'face_rec\tests', read_location=r'D:\face_trained.yml'):
                        (0, 0, 0),
                        thickness=1)
             # cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
-            cv.imshow(f"{people[predicted_label]} vs {people[label]}", cv.resize(feature, (256, 256)))
+            # cv.imshow(f"{people[predicted_label]} vs {people[label]}", cv.resize(feature, (256, 256)))
         debug_counter += 1
         for person in people:
             if person == people[label]:
@@ -210,5 +208,5 @@ def menu():
 
 
 #  menu()
-train(train_ratio=4)
+train(train_ratio=2)
 test()

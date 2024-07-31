@@ -10,7 +10,7 @@ people_list = ['Yujin', 'Gaeul', 'Rei', 'Wonyoung', 'Liz', 'Leeseo', 'Naheed Nen
 modelFile = r"face_rec\res10_300x300_ssd_iter_140000_fp16.caffemodel"
 configFile = r"face_rec\deploy.prototxt"
 # the program's directory is the big folder which contains the folder of stuff on github
-os.chdir(r"D:\GitHub\AutoSpotCV")
+os.chdir(r"C:\GitHub\AutoSpotCV")
 
 
 def constrain(corner1, corner2, end_corner):
@@ -90,7 +90,7 @@ def train(train_location=r'face_rec\faces'):
     features, labels = preprocess(people, train_location)
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
     face_recognizer.train(features, labels)
-    face_recognizer.save(r'D:\face_trained.yml')
+    face_recognizer.save(r'C:\face_trained.yml')
 
 
 def test(test_location=r'face_rec\tests'):
@@ -100,7 +100,7 @@ def test(test_location=r'face_rec\tests'):
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
     features, labels = preprocess(people, test_location)
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
-    face_recognizer.read(r'D:\face_trained.yml')
+    face_recognizer.read(r'C:\User\mukch\face_trained.yml')
     counters = {person: {'TP': 0, 'FP': 0, 'TN': 0, 'FN': 0} for person in people}
     n_labels = len(labels)
     for feature, label in zip(features, labels):

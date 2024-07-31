@@ -12,7 +12,7 @@ import random
 # 50 images, 2 threads, 1.19s per image
 # 50 images, 5 threads, 0.786s per image
 # 50 images, 10 threads, 0.695s per image
-os.chdir(r"D:\Github\AutoSpotCV")
+os.chdir(r"C:\Github\AutoSpotCV")
 
 
 def bot(term, max_runs, is_random, location, order, step):

@@ -8,7 +8,7 @@ import random
 
 modelFile = r"face_rec\res10_300x300_ssd_iter_140000_fp16.caffemodel"
 configFile = r"face_rec\deploy.prototxt"
-os.chdir(r"D:\GitHub\AutoSpotCV")
+os.chdir(r"C:\GitHub\AutoSpotCV")
 
 
 def constrain(corner1, corner2, end_corner):
@@ -46,7 +46,7 @@ def face_detect_dnn(net, img, threshold=0.7):
     return face_boxes
 
 
-def live(read_location=r'D:\face_trained.yml', people_location=r'face_rec\faces'):
+def live(read_location=r'C:\User\mukch\face_trained.yml', people_location=r'face_rec\faces'):
     people = find_people(people_location)
     net = cv.dnn.readNetFromCaffe(configFile, modelFile)
     net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
