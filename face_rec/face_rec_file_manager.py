@@ -14,7 +14,7 @@ os.chdir(r"C:\GitHub\AutoSpotCV")
 def constrain_img(img, size):
     height, width = img.shape[:2]  # get the first 2 dims
     factor = min(size/width, size / height)  # whichever is smaller
-    if factor <= 1:
+    if factor >= 1:
         return img
     else:  # don't need an else here but it looks better
         new_width = int(width * factor)
@@ -57,11 +57,10 @@ def simplify(size, location=r"face_rec\faces"):  # convert a directory to a cons
             try:
                 old_img = cv.imread(old_img_path)
                 new_img = constrain_img(old_img, size)
-                cv.imwrite(new_img_path, new_img)
                 # now delete the old one
                 delete(old_img_path)
+                cv.imwrite(new_img_path, new_img)
             except AttributeError:
-                print(f"{img_name} failed")
                 delete(old_img_path)  # its broken, remove it
 
 
@@ -72,7 +71,7 @@ def menu():
         train_or_validate = str(input("Constrain Directory or Split Data? (C/S): "))
         if train_or_validate == "C" or train_or_validate == "c":
             print("**Constrain directory will open a folder, and change the image files within the subfolders**")
-            size = int(input("Pixel Size to Cosntrain to: "))
+            size = int(input("Pixel Size to Constrain to: "))
             location = str(input("Location to Constrain: "))
             simplify(size, location=location)
         elif train_or_validate == "S" or train_or_validate == "s":
@@ -83,3 +82,6 @@ def menu():
         else:
             print("Exiting. Thank You.")
             break
+
+
+menu()

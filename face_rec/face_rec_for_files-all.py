@@ -75,7 +75,7 @@ def preprocess(location, train_ratio=1.0):
         rotation_range=40,
         width_shift_range=0.2,
         height_shift_range=0.2,
-        shear_range=0.2,
+        shear_range=0.1,
         zoom_range=0.2,
         horizontal_flip=True,
         fill_mode='nearest',
@@ -99,8 +99,8 @@ def preprocess(location, train_ratio=1.0):
             fluffed_images = inflate(inflater, img, fluff_amount=train_ratio)  # artificially expand dataset
             for fluff in fluffed_images:  # for every image created
                 face_boxes = face_detect_dnn(net, fluff, 0.4)  # get the location of faces
-                cv.imshow("fluff", fluff)
-                cv.waitKey(0)
+                # cv.imshow("fluff", fluff)
+                # cv.waitKey(0)
                 height = fluff.shape[0]
                 width = fluff.shape[1]
                 for (x1, y1, x2, y2) in face_boxes:  # for each location with a face
@@ -126,7 +126,9 @@ def train(train_location=r'face_rec\faces', save_location=r'C:\Users\mukch\face_
     features, labels, people = preprocess(train_location, train_ratio=train_ratio)
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
     face_recognizer.train(features, labels)
+    print("saving...")
     face_recognizer.save(save_location)
+    print("saving complete")
     # np.save('face recognition/features.npy', features)
     # np.save('face recognition/labels.npy', labels)
 
@@ -137,7 +139,9 @@ def test(test_location=r'face_rec\tests', read_location=r'C:\Users\mukch\face_tr
     net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
     features, labels, people = preprocess(test_location)  # extract faces, their real label(number id), and the name
     face_recognizer = cv.face.LBPHFaceRecognizer_create()
+    print("loading...")
     face_recognizer.read(read_location)
+    print("loading complete")
     counters = {person: {'TP': 0, 'FP': 0, 'TN': 0, 'FN': 0} for person in people}
     debug_counter = 0
     for feature, label in zip(features, labels):
@@ -191,6 +195,32 @@ def menu():
             break
 
 
-#  menu()
-# train(train_ratio=4)
-# test()
+def main_tests():
+    # the AI is OK (trained with 7207 total images including artificial). It hogs an enormous amount of RAM.
+    # Brad Pitt: sensitivity = 0.8333
+    # Chris Hemsworth: sensitivity = 0.7059
+    # Ed Sheeran: sensitivity = 0.8261
+    # Gaeul: sensitivity = 0.5385
+    # Jensen Huang: sensitivity = 0.8095
+    # Jimin: sensitivity = 0.4545
+    # Leeseo: sensitivity = 0.7143
+    # Leonardo DiCaprio: sensitivity = 0.8421
+    # Lisa: sensitivity = 0.6452
+    # Lisa Su: sensitivity = 0.8750
+    # Liz: sensitivity = 0.4400
+    # Morgan Freeman: sensitivity = 0.8571
+    # Naheed Nenshi: sensitivity = 0.6087
+    # Rei: sensitivity = 0.3750
+    # Taylor Swift: sensitivity = 0.7241
+    # Whitney Houston: sensitivity = 0.7333
+    # Wonyoung: sensitivity = 0.5000
+    # Yujin: sensitivity = 0.6500
+    train(train_ratio=1, save_location=r'C:\Users\mukch\trained1.yml')
+    test(read_location=r'C:\Users\mukch\trained1.yml')
+    train(train_ratio=2, save_location=r'C:\Users\mukch\trained2.yml')
+    test(read_location=r'C:\Users\mukch\trained2.yml')
+    train(train_ratio=4, save_location=r'C:\Users\mukch\trained4.yml')
+    test(read_location=r'C:\Users\mukch\trained4.yml')
+
+
+menu()
