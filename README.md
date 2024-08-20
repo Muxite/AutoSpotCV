@@ -31,9 +31,10 @@
 - Yujin: sensitivity = 0.6500
 
 ## Image Downloader (downloader.py) (FINISHED) 
-Uses Selenium Webdriver to download large numbers of images from Google Images based on a search term. Uses multithreading to improve performance (0.695 seconds per image at 10 threads and 50 images). Occaisionally double-downloads images. 
+Uses Selenium Webdriver to download large numbers of images from Google Images based on a search term. Uses multithreading to improve performance (0.695 seconds per image at 10 threads and 50 images). Occasionally double-downloads images. Demo video below 👇👇👇 
 
- 
+[![Downloader Demo Video](https://img.youtube.com/vi/U-La3EGI8As/maxresdefault.jpg)](https://youtu.be/U-La3EGI8As)
+
 ## File manager (face_rec_file_manager.py) (FINISHED) 
 Splits image directories into training and testing datasets, or convert all images to fit in a specified size.
 ### folder format
