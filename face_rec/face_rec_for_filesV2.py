@@ -1,5 +1,5 @@
 # trained on a variety of faces (mostly celebrities) of different ethnicities. Images are straight from Google.
-# it seems to struggle with telling some Asians apart (IVE members). It has a sensitivity of 100% on Whitney Houston.
+
 
 import os
 import cv2 as cv
@@ -8,6 +8,7 @@ import time
 import random
 import gc
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import matplotlib.pyplot as plt
 
 modelFile = r"face_rec\res10_300x300_ssd_iter_140000_fp16.caffemodel"
 configFile = r"face_rec\deploy.prototxt"
@@ -28,22 +29,24 @@ class FaceRecognizer:
 
     def preprocess(self, load_directory, train_ratio=1.0, reloading=False, test_size=0.1):
         if reloading:  # if the items are already npy saved
-            train_features = np.load(os.path.join(load_directory, 'train_features.npy'))
-            train_labels = np.load(os.path.join(load_directory, 'train_labels.npy'))
-            test_features = np.load(os.path.join(load_directory, 'test_features.npy'))
-            test_labels = np.load(os.path.join(load_directory, 'test_labels.npy'))
+            try:
+                train_features = np.load(os.path.join(self.autosave_directory, 'train_features.npy'))
+                train_labels = np.load(os.path.join(self.autosave_directory, 'train_labels.npy'))
+                test_features = np.load(os.path.join(self.autosave_directory, 'test_features.npy'))
+                test_labels = np.load(os.path.join(self.autosave_directory, 'test_labels.npy'))
+                people = np.load(os.path.join(self.autosave_directory, 'people.npy'))
+                # Recombine the features and labels
+                features = np.concatenate((train_features, test_features), axis=0)
+                labels = np.concatenate((train_labels, test_labels), axis=0)
 
-            # Recombine the features and labels
-            features = np.concatenate((train_features, test_features), axis=0)
-            labels = np.concatenate((train_labels, test_labels), axis=0)
-
-            # Split them into new train and test sets
-            self.train_features, self.test_features, self.train_labels, self.test_labels = train_test_split(
-                features, labels, test_size=test_size
-            )
-
-            print("*reloaded and recombined previously saved features and labels*")
-            return
+                # Split them into new train and test sets
+                self.train_features, self.test_features, self.train_labels, self.test_labels = split_data(
+                    features, labels, test_size)
+                self.people = people
+                print("*reloaded and recombined previously saved features and labels*")
+                return
+            except FileNotFoundError:
+                print("couldn't reload, will preprocess")
 
         features = []  # faces extracted from an image
         labels = []  # the number assigned to a person
@@ -103,17 +106,29 @@ class FaceRecognizer:
         self.train_features, self.test_features, self.train_labels, self.test_labels = split_data(
             features, labels, test_size)
 
-        self.people = people
+        self.people = np.array(people)
         if self.autosave:
             np.save(os.path.join(self.autosave_directory, 'train_features.npy'), self.train_features)
             np.save(os.path.join(self.autosave_directory, 'train_labels.npy'), self.train_labels)
             np.save(os.path.join(self.autosave_directory, 'test_features.npy'), self.test_features)
             np.save(os.path.join(self.autosave_directory, 'test_labels.npy'), self.test_labels)
+            np.save(os.path.join(self.autosave_directory, 'people.npy'), self.people)
 
-    def train_LBPH(self, directory=None):
-        if self.recognizer_LBPH is not None:
+    def train_LBPH(self, directory=None, retrain=False):
+        if self.recognizer_LBPH is None:
             self.recognizer_LBPH = cv.face.LBPHFaceRecognizer_create()
-        self.recognizer_LBPH.train(self.features, self.labels)
+
+        read_directory = directory or self.autosave_directory
+        if read_directory and not retrain:
+            try:
+                print("loading...")
+                self.recognizer_LBPH.read(os.path.join(read_directory, "recognizer_LBPH.yml"))
+                print("loading complete")
+                return
+            except FileNotFoundError:
+                print("loading LBPH failed, training")
+
+        self.recognizer_LBPH.train(self.train_features, self.train_labels)
         print("trained LBPH recognizer")
         save_directory = directory or self.autosave_directory
         if save_directory:
@@ -121,47 +136,48 @@ class FaceRecognizer:
             self.recognizer_LBPH.save(os.path.join(save_directory, "recognizer_LBPH.yml"))
             print("saving complete")
 
-    def test_LBPH(self, test_location=r'face_rec\tests', read_location=r'C:\Users\mukch\face_trained.yml'):
+    def test_LBPH(self, read_location=None):
         net = cv.dnn.readNetFromCaffe(configFile, modelFile)
         net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
         net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
-        features, labels, people = preprocess(test_location)  # extract faces, their real label(number id), and the name
-        face_recognizer = cv.face.LBPHFaceRecognizer_create()
-        print("loading...")
-        face_recognizer.read(read_location)
-        print("loading complete")
+        features, labels, people = self.test_features, self.test_labels, self.people
         counters = {person: {'TP': 0, 'FP': 0, 'TN': 0, 'FN': 0} for person in people}
-        debug_counter = 0
+        predictions = {person: [] for person in people}  # Track predictions for each person
+        # debug_counter = 0
         for feature, label in zip(features, labels):
-            predicted_label, confidence = face_recognizer.predict(feature)
-            if debug_counter in range(0, 3):
-                cv.putText(feature,
-                           str(people[predicted_label]),
-                           (20, 20),
-                           cv.FONT_HERSHEY_SIMPLEX,
-                           1.0,
-                           (255, 255, 255),
-                           thickness=2)
-                cv.putText(feature,
-                           str(people[predicted_label]),
-                           (20, 20),
-                           cv.FONT_HERSHEY_SIMPLEX,
-                           1.0,
-                           (0, 0, 0),
-                           thickness=1)
-                # cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
-                # cv.imshow(f"{people[predicted_label]} vs {people[label]}", cv.resize(feature, (256, 256)))
-            debug_counter += 1
-            for person in people:
-                if person == people[label]:
-                    if person == people[predicted_label]:
-                        counters[person]['TP'] += 1  # true positive
-                    else:
-                        counters[person]['FN'] += 1  # false negative
+            predicted_label, confidence = self.recognizer_LBPH.predict(feature)
+            predictions[people[label]].append(people[predicted_label])  # Track the prediction
+            # if debug_counter in range(0, 3):
+            # cv.putText(feature,
+            #            str(people[predicted_label]),
+            #            (20, 20),
+            #            cv.FONT_HERSHEY_SIMPLEX,
+            #            1.0,
+            #            (255, 255, 255),
+            #            thickness=2)
+            # cv.putText(feature,
+            #            str(people[predicted_label]),
+            #            (20, 20),
+            #            cv.FONT_HERSHEY_SIMPLEX,
+            #            1.0,
+            #            (0, 0, 0),
+            #            thickness=1)
+            # cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+            # cv.imshow(f"{people[predicted_label]} vs {people[label]}", cv.resize(feature, (256, 256)))
+            # debug_counter += 1
         for person, counter in counters.items():
             sensitivity = counter['TP'] / (counter['TP'] + counter['FN'])
-            #  specificity = counter['TN'] / (counter['TN'] + counter['FP'])
             print(f"{person}: sensitivity = {sensitivity:.4f}")
+
+        # Generate histograms
+        for person, preds in predictions.items():
+            plt.figure(figsize=(10, 6))
+            plt.hist(preds, bins=len(people), edgecolor='black')
+            plt.title(f'Predictions for {person}')
+            plt.xlabel('Predicted Person')
+            plt.ylabel('Frequency')
+            plt.xticks(rotation=45)
+            plt.show()
         cv.waitKey(0)
 
 
@@ -229,50 +245,9 @@ def split_data(features, labels, test_size, random_seed=None):
     return train_features, test_features, train_labels, test_labels
 
 
-def menu():
-    print("Face Recognition for Files, Muk Chunpongtong 2024/7")
-    print(f"Working Directory: {os. getcwd()}")
-    while True:
-        train_or_validate = str(input("Training or Validating? (T/V): "))
-        if train_or_validate == "T" or train_or_validate == "t":
-            train_location = str(input("Training Dataset Location: "))
-            save_location = str(input(".yml Save Location: "))
-            train(train_location=train_location, save_location=save_location)
-        elif train_or_validate == "V" or train_or_validate == "v":
-            test_location = str(input("Test: "))
-            read_location = str(input(".yml Read Location: "))
-            test(test_location=test_location, read_location=read_location)
-        else:
-            print("Exiting. Thank You.")
-            break
-
-
-def main_tests():
-    # the AI is OK (trained with 7207 total images including artificial). It hogs an enormous amount of RAM.
-    # Brad Pitt: sensitivity = 0.8333
-    # Chris Hemsworth: sensitivity = 0.7059
-    # Ed Sheeran: sensitivity = 0.8261
-    # Gaeul: sensitivity = 0.5385
-    # Jensen Huang: sensitivity = 0.8095
-    # Jimin: sensitivity = 0.4545
-    # Leeseo: sensitivity = 0.7143
-    # Leonardo DiCaprio: sensitivity = 0.8421
-    # Lisa: sensitivity = 0.6452
-    # Lisa Su: sensitivity = 0.8750
-    # Liz: sensitivity = 0.4400
-    # Morgan Freeman: sensitivity = 0.8571
-    # Naheed Nenshi: sensitivity = 0.6087
-    # Rei: sensitivity = 0.3750
-    # Taylor Swift: sensitivity = 0.7241
-    # Whitney Houston: sensitivity = 0.7333
-    # Wonyoung: sensitivity = 0.5000
-    # Yujin: sensitivity = 0.6500
-    train(train_ratio=1, save_location=r'C:\Users\mukch\trained1.yml')
-    test(read_location=r'C:\Users\mukch\trained1.yml')
-    train(train_ratio=2, save_location=r'C:\Users\mukch\trained2.yml')
-    test(read_location=r'C:\Users\mukch\trained2.yml')
-    train(train_ratio=4, save_location=r'C:\Users\mukch\trained4.yml')
-    test(read_location=r'C:\Users\mukch\trained4.yml')
-
-
-menu()
+def debug_menu():
+    print("Face Recognition for Files V2, Muk Chunpongtong 2024/8")
+    face_rec = FaceRecognizer(autosave=True, autosave_directory=r"face_rec")
+    # face_rec.preprocess(load_directory=r"face_rec/faces", reloading=True, train_ratio=2.0)
+    face_rec.train_LBPH()
+    face_rec.test_LBPH()

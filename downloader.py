@@ -47,7 +47,7 @@ def bot(term, max_runs, is_random, location, order, step):
                 try:
                     image_src = image.get_attribute("src")
                     image_download = requests.get(image_src, allow_redirects=False)
-                    with open(location + term + "--" + str(i) + ".png", 'wb') as file:
+                    with open(os.path.join(location, term + "--" + str(i) + ".png"), 'wb') as file:
                         file.write(image_download.content)
                 except requests.exceptions.RequestException:
                     print("download failed on" + str(i))
@@ -91,3 +91,6 @@ def alt_run(term, loops, is_random, threads_n, location):
     for t in threads:
         t.join()
     print(time.time() - very_start)
+
+
+menu()
