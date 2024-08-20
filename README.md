@@ -13,7 +13,7 @@
 face_rec_for_filesV2 uses LBPH face detection to train off a directory of faces. V2 follows OOP and uses a class called FaceRecognizer, and has autosave functions to store processed images and models to allow it to pick up where it left off. V2 also generates graphs and sensitivity numbers after a test, and saves them to a results directory.
 Both scripts are inside the face_rec folder. The image dataset was created with the Downloader script and has 2940 images of celebrities with differing ethnicities. V1 only contains functions, and is an old version. At a glance, V2 is significantly better than V1, and is easier to use.
 V2 provides high sensitivity for all people:
-![image](https://github.com/user-attachments/assets/178880c9-0420-4386-b418-a66593b1cd52)
+![image](https://github.com/user-attachments/assets/37c88d4c-0a74-4819-ab3f-967157af624c)
 Here are two results of V2:
 ![image](https://github.com/user-attachments/assets/be9d5abd-f999-4bd2-b9df-a416cd0df7b4) ![image](https://github.com/user-attachments/assets/f43df9f8-cd77-41ca-a506-a46186f808f9)
 
