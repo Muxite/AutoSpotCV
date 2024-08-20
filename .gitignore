@@ -1,0 +1,7 @@
+
+face_rec/test_features.npy
+face_rec/people.npy
+face_rec/recognizer_LBPH.yml
+face_rec/test_labels.npy
+face_rec/train_features.npy
+face_rec/train_labels.npy
