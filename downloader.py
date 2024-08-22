@@ -1,6 +1,7 @@
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 import requests
 import threading
@@ -13,24 +14,32 @@ import random
 # 50 images, 5 threads, 0.786s per image
 # 50 images, 10 threads, 0.695s per image
 os.chdir(r"C:\Github\AutoSpotCV")
+service = Service(executable_path=r'chromedriver.exe')
+options = webdriver.ChromeOptions()
+options.binary_location = r"C:\Program Files (x86)\chromefortesting-win64\chrome.exe"
 
 
 def bot(term, max_runs, is_random, location, order, step):
     google_images = 'https://images.google.ca/'
-    browser = webdriver.Chrome(r'chromedrivers/chromedriver'+str(order)+'.exe')
+    browser = webdriver.Chrome(service=service, options=options)
     browser.get(google_images)
     search_bar = browser.find_element(By.XPATH, '//*[@id="APjFqb"]')  # get the search bar
     search_bar.send_keys(term)  # input the word
     search_bar.send_keys(Keys.RETURN)  # press enter
-    time.sleep(3)
+    time.sleep(10)
     for j in range(max_runs):  # start at order, skip by step
+
         i = j*step+order
         clickable = browser.find_elements(By.XPATH, '//div[contains(@jsname, "qQjpJ")]')  # minimal time (>20ms)
         html = browser.find_element(By.TAG_NAME, "html")
         if is_random:
             chosen = random.choice(clickable)  # random image
         else:
-            chosen = clickable[i]  # sequential
+            try:
+                chosen = clickable[i]  # sequential
+            except IndexError:
+                print("outta range, skipping")
+                continue
         if j % int(20/step) == 0:
             html.send_keys(Keys.END)
         sleep_time = 0.5

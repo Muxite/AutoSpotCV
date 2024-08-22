@@ -114,20 +114,9 @@ class FaceRecognizer:
             np.save(os.path.join(self.autosave_directory, 'test_labels.npy'), self.test_labels)
             np.save(os.path.join(self.autosave_directory, 'people.npy'), self.people)
 
-    def train_LBPH(self, directory=None, retrain=False):
+    def train_LBPH(self, directory=None):
         if self.recognizer_LBPH is None:
             self.recognizer_LBPH = cv.face.LBPHFaceRecognizer_create()
-
-        read_directory = directory or self.autosave_directory
-        if read_directory and not retrain:
-            try:
-                print("loading...")
-                self.recognizer_LBPH.read(os.path.join(read_directory, "recognizer_LBPH.yml"))
-                print("loading complete")
-                return
-            except FileNotFoundError:
-                print("loading LBPH failed, training")
-
         self.recognizer_LBPH.train(self.train_features, self.train_labels)
         print("trained LBPH recognizer")
         save_directory = directory or self.autosave_directory
@@ -136,7 +125,24 @@ class FaceRecognizer:
             self.recognizer_LBPH.save(os.path.join(save_directory, "recognizer_LBPH.yml"))
             print("saving complete")
 
+    def get_LBPH(self, directory=None):
+        if self.recognizer_LBPH is None:
+            self.recognizer_LBPH = cv.face.LBPHFaceRecognizer_create()
+        read_directory = directory or self.autosave_directory
+        if read_directory:
+            try:
+                print("loading...")
+                self.recognizer_LBPH.read(os.path.join(read_directory, "recognizer_LBPH.yml"))
+                print("loading complete")
+                return
+            except FileNotFoundError:
+                print("loading LBPH failed, training")
+                self.train_LBPH()
+
     def test_LBPH(self, read_location=None):
+        if self.test_labels is None or self.test_features is None or self.people is None:
+            print("test failed, no test feates/labels/people")
+            return
         net = cv.dnn.readNetFromCaffe(configFile, modelFile)
         net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
         net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
@@ -147,37 +153,75 @@ class FaceRecognizer:
         for feature, label in zip(features, labels):
             predicted_label, confidence = self.recognizer_LBPH.predict(feature)
             predictions[people[label]].append(people[predicted_label])  # Track the prediction
-            # if debug_counter in range(0, 3):
-            # cv.putText(feature,
-            #            str(people[predicted_label]),
-            #            (20, 20),
-            #            cv.FONT_HERSHEY_SIMPLEX,
-            #            1.0,
-            #            (255, 255, 255),
-            #            thickness=2)
-            # cv.putText(feature,
-            #            str(people[predicted_label]),
-            #            (20, 20),
-            #            cv.FONT_HERSHEY_SIMPLEX,
-            #            1.0,
-            #            (0, 0, 0),
-            #            thickness=1)
-            # cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
-            # cv.imshow(f"{people[predicted_label]} vs {people[label]}", cv.resize(feature, (256, 256)))
-            # debug_counter += 1
+
+            for person in people:
+                if person == people[label]:
+                    if person == people[predicted_label]:
+                        counters[person]['TP'] += 1  # True Positive
+                    else:
+                        counters[person]['FN'] += 1  # False Negative
+                else:
+                    if person == people[predicted_label]:
+                        counters[person]['FP'] += 1  # False Positive
+                    else:
+                        counters[person]['TN'] += 1  # True Negative
+
         for person, counter in counters.items():
-            sensitivity = counter['TP'] / (counter['TP'] + counter['FN'])
+            sensitivity = counter['TP'] / (counter['TP'] + counter['FN']) if (counter['TP'] + counter[
+                'FN']) > 0 else 0
             print(f"{person}: sensitivity = {sensitivity:.4f}")
 
-        # Generate histograms
+        # make bar chart
         for person, preds in predictions.items():
-            plt.figure(figsize=(10, 6))
-            plt.hist(preds, bins=len(people), edgecolor='black')
-            plt.title(f'Predictions for {person}')
-            plt.xlabel('Predicted Person')
-            plt.ylabel('Frequency')
-            plt.xticks(rotation=45)
-            plt.show()
+            plt.figure(figsize=(8, 6))
+            unique_preds, counts = np.unique(preds, return_counts=True)
+            colors = ['red'] * len(unique_preds)
+            if person in unique_preds:
+                correct_index = np.where(unique_preds == person)[0][0]
+                colors[correct_index] = 'blue'
+
+            plt.bar(unique_preds, counts, color=colors)
+            plt.title(f'{person} predictions')
+            plt.xlabel('predicted person')
+            plt.ylabel('frequency')
+            plt.xticks()
+        save_results(predictions, counters)
+        plt.show()
+
+    def test_one(self, file_location):
+        self.people = people = np.load(os.path.join(self.autosave_directory, 'people.npy'))
+        net = cv.dnn.readNetFromCaffe(configFile, modelFile)
+        net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
+        net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
+        img = cv.imread(file_location)
+        if img is None:
+            print("no img, test failed")
+            return
+        face_boxes = face_detect_dnn(net, img, 0.4)  # get the location of faces
+        height = img.shape[0]
+        width = img.shape[1]
+        x1, y1, x2, y2 = face_boxes[0]
+        if bound_check(x1, y1, x2, y2, width, height) is False:  # add the face only if the face is in bounds
+            return
+        sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
+        gray_face = cv.resize(sub, (128, 128)) / 255.0
+        predicted_label, confidence = self.recognizer_LBPH.predict(gray_face)
+        cv.putText(gray_face,
+               str(self.people[predicted_label]),
+               (20, 20),
+               cv.FONT_HERSHEY_SIMPLEX,
+               1.0,
+               (255, 255, 255),
+               thickness=2)
+        cv.putText(gray_face,
+                   str(people[predicted_label]),
+                   (20, 20),
+                   cv.FONT_HERSHEY_SIMPLEX,
+                   1.0,
+                   (0, 0, 0),
+                   thickness=1)
+        cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+        cv.imshow(f"{people[predicted_label]}", cv.resize(gray_face, (256, 256)))
         cv.waitKey(0)
 
 
@@ -245,9 +289,41 @@ def split_data(features, labels, test_size, random_seed=None):
     return train_features, test_features, train_labels, test_labels
 
 
+def save_results(predictions, counters, output_dir='face_rec/results'):
+    # Create the output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Save sensitivity values to a text file
+    with open(os.path.join(output_dir, 'sensitivity.txt'), 'w') as f:
+        for person, counter in counters.items():
+            sensitivity = counter['TP'] / (counter['TP'] + counter['FN']) if (counter['TP'] + counter['FN']) > 0 else 0
+            f.write(f"{person}: sensitivity = {sensitivity:.4f}\n")
+
+    # Generate and save bar charts
+    for person, preds in predictions.items():
+        plt.figure(figsize=(4, 4))
+        unique_preds, counts = np.unique(preds, return_counts=True)
+        colors = ['blue'] * len(unique_preds)
+        if person in unique_preds:
+            correct_index = np.where(unique_preds == person)[0][0]
+            colors[correct_index] = 'red'
+
+        plt.bar(unique_preds, counts, color=colors, edgecolor='black')
+        plt.title(f'{person} predictions')
+        plt.xlabel('Predicted Person')
+        plt.ylabel('Frequency')
+        plt.xticks(rotation=20)
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, f'{person}_predictions.png'))
+        plt.close()
+
+
 def debug_menu():
     print("Face Recognition for Files V2, Muk Chunpongtong 2024/8")
     face_rec = FaceRecognizer(autosave=True, autosave_directory=r"face_rec")
-    # face_rec.preprocess(load_directory=r"face_rec/faces", reloading=True, train_ratio=2.0)
-    face_rec.train_LBPH()
-    face_rec.test_LBPH()
+    face_rec.get_LBPH()
+    face_rec.test_one(file_location=r"face_rec/jh.png")
+
+
+debug_menu()
