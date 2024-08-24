@@ -16,12 +16,16 @@
 ## File-based face recognition script + experiments (face_rec_for_filesV2.py, face_rec_for_filesV1.py)
 face_rec_for_filesV2 uses LBPH face detection to train off a directory of faces. V2 follows OOP and uses a class called FaceRecognizer, and has autosave functions to store processed images and models to allow it to pick up where it left off. V2 also generates graphs and sensitivity numbers after a test, and saves them to a results directory. V2 LBPH leaves much to be desired in terms of sensitivity.
 Both scripts are inside the face_rec folder. The image dataset was created with the Downloader script and has 2940 images of celebrities with differing ethnicities. V1 only contains functions, and is an old version.
-### graphs produced by V2\
-![Jimin_predictions](https://github.com/user-attachments/assets/452828af-ded9-4950-8a2b-6f7cbbcf18d7)
+### graphs produced by V2
+![Brad Pitt_predictions](https://github.com/user-attachments/assets/f1ebf4ac-655d-4e7a-8a5f-dbc2ab26d770)
 
-![Lisa_predictions](https://github.com/user-attachments/assets/3fdd62cd-00de-4cce-a316-37dee13236e9)
+![Jensen Huang_predictions](https://github.com/user-attachments/assets/77735e56-46a6-43e8-b0d5-fc4b832d9c89)
 
 ![Yujin_predictions](https://github.com/user-attachments/assets/00aaa26a-9b1d-4428-af76-40d190e56474)
+
+![Liz_predictions](https://github.com/user-attachments/assets/389d501d-8c2a-4c3b-a064-e5fba8966e1a)
+
+![Morgan Freeman_predictions](https://github.com/user-attachments/assets/61b33911-11bb-4c0c-a678-9845bd364e88)
 
 ### Sensitivity Numbers for V2
 Brad Pitt: sensitivity = 0.8519
@@ -44,7 +48,8 @@ Whitney Houston: sensitivity = 0.5938
 Wonyoung: sensitivity = 0.5667
 Yujin: sensitivity = 0.2927
 
-
+### "test_one" mode used on Jensen Huang
+![Screenshot 2024-08-21 201658](https://github.com/user-attachments/assets/429584c1-c24f-48ae-bba2-369fcc88d7b3)
 
 ## Image Downloader (downloader.py) (FINISHED) 
 Uses Selenium Webdriver to download large numbers of images from Google Images based on a search term. Uses multithreading to improve performance (0.695 seconds per image at 10 threads and 50 images). Occasionally double-downloads images. Demo video below 👇👇👇 
