@@ -13,39 +13,41 @@
   
 # Scripts
 
-## File-based face recognition script + experiments (face_rec_for_filesV2.py, face_rec_for_filesV1.py)
+## File-based face recognition script + experiments (face_rec\face_rec_for_filesV2.py, face_rec\face_rec_for_filesV1.py)
 face_rec_for_filesV2 uses LBPH face detection to train off a directory of faces. V2 follows OOP and uses a class called FaceRecognizer, and has autosave functions to store processed images and models to allow it to pick up where it left off. V2 also generates graphs and sensitivity numbers after a test, and saves them to a results directory. V2 LBPH leaves much to be desired in terms of sensitivity.
 Both scripts are inside the face_rec folder. The image dataset was created with the Downloader script and has 2940 images of celebrities with differing ethnicities. V1 only contains functions, and is an old version.
-### graphs produced by V2
-![Brad Pitt_predictions](https://github.com/user-attachments/assets/f1ebf4ac-655d-4e7a-8a5f-dbc2ab26d770)
+### Charts Produced by V2
+<img src="https://github.com/user-attachments/assets/f1ebf4ac-655d-4e7a-8a5f-dbc2ab26d770" width="300">
 
-![Jensen Huang_predictions](https://github.com/user-attachments/assets/77735e56-46a6-43e8-b0d5-fc4b832d9c89)
+<img src="https://github.com/user-attachments/assets/77735e56-46a6-43e8-b0d5-fc4b832d9c89" width="300">
 
-![Yujin_predictions](https://github.com/user-attachments/assets/00aaa26a-9b1d-4428-af76-40d190e56474)
+<img src="https://github.com/user-attachments/assets/00aaa26a-9b1d-4428-af76-40d190e56474" width="300">
 
-![Liz_predictions](https://github.com/user-attachments/assets/389d501d-8c2a-4c3b-a064-e5fba8966e1a)
+<img src="https://github.com/user-attachments/assets/389d501d-8c2a-4c3b-a064-e5fba8966e1a" width="300">
 
-![Morgan Freeman_predictions](https://github.com/user-attachments/assets/61b33911-11bb-4c0c-a678-9845bd364e88)
+<img src="https://github.com/user-attachments/assets/61b33911-11bb-4c0c-a678-9845bd364e88" width="300">
 
-### Sensitivity Numbers for V2
-Brad Pitt: sensitivity = 0.8519
-Chris Hemsworth: sensitivity = 0.7381
-Ed Sheeran: sensitivity = 0.6222
-Gaeul: sensitivity = 0.2000
-Jensen Huang: sensitivity = 0.8462
-Jimin: sensitivity = 0.4468
-Kim K: sensitivity = 0.6977
-Leeseo: sensitivity = 0.5667
-Leonardo DiCaprio: sensitivity = 0.6667
-Lisa: sensitivity = 0.5714
-Lisa Su: sensitivity = 0.5333
-Liz: sensitivity = 0.6667
-Morgan Freeman: sensitivity = 0.7500
-Naheed Nenshi: sensitivity = 0.7143
-Rei: sensitivity = 0.3548
-Taylor Swift: sensitivity = 0.8125
-Whitney Houston: sensitivity = 0.5938
-Wonyoung: sensitivity = 0.5667
+<img src="https://github.com/user-attachments/assets/e24fedb4-5a75-4b37-8677-a5f1af131392" width="300">
+
+### Sensitivity Numbers for V2 (It struggles with IVE members)
+Brad Pitt: sensitivity = 0.8519 \
+Chris Hemsworth: sensitivity = 0.7381 \
+Ed Sheeran: sensitivity = 0.6222\
+Gaeul: sensitivity = 0.2000\
+Jensen Huang: sensitivity = 0.8462\
+Jimin: sensitivity = 0.4468\
+Kim K: sensitivity = 0.6977\
+Leeseo: sensitivity = 0.5667\
+Leonardo DiCaprio: sensitivity = 0.6667\
+Lisa: sensitivity = 0.5714\
+Lisa Su: sensitivity = 0.5333\
+Liz: sensitivity = 0.6667\
+Morgan Freeman: sensitivity = 0.7500\
+Naheed Nenshi: sensitivity = 0.7143\
+Rei: sensitivity = 0.3548\
+Taylor Swift: sensitivity = 0.8125\
+Whitney Houston: sensitivity = 0.5938\
+Wonyoung: sensitivity = 0.5667\
 Yujin: sensitivity = 0.2927
 
 ### "test_one" mode used on Jensen Huang
