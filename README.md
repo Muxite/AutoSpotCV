@@ -16,14 +16,14 @@
 ## File-based face recognition script + experiments (face_rec_for_filesV2.py, face_rec_for_filesV1.py)
 face_rec_for_filesV2 uses LBPH face detection to train off a directory of faces. V2 follows OOP and uses a class called FaceRecognizer, and has autosave functions to store processed images and models to allow it to pick up where it left off. V2 also generates graphs and sensitivity numbers after a test, and saves them to a results directory. V2 LBPH leaves much to be desired in terms of sensitivity.
 Both scripts are inside the face_rec folder. The image dataset was created with the Downloader script and has 2940 images of celebrities with differing ethnicities. V1 only contains functions, and is an old version.
-###graphs produced by V2
+### graphs produced by V2\
 ![Jimin_predictions](https://github.com/user-attachments/assets/452828af-ded9-4950-8a2b-6f7cbbcf18d7)
 
 ![Lisa_predictions](https://github.com/user-attachments/assets/3fdd62cd-00de-4cce-a316-37dee13236e9)
 
 ![Yujin_predictions](https://github.com/user-attachments/assets/00aaa26a-9b1d-4428-af76-40d190e56474)
 
-###Sensitivity Numbers for V2
+### Sensitivity Numbers for V2
 Brad Pitt: sensitivity = 0.8519
 Chris Hemsworth: sensitivity = 0.7381
 Ed Sheeran: sensitivity = 0.6222
