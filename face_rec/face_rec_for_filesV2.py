@@ -163,19 +163,22 @@ class FaceRecognizer:
 
     def test_LBPH(self):
         if self.test_labels is None or self.test_features is None or self.people is None:
-            print("test failed, no test feates/labels/people")
+            print("test failed, no test features/labels/people")
             return
         net = cv.dnn.readNetFromCaffe(configFile, modelFile)
         net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
         net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
         features, labels, people = self.test_features, self.test_labels, self.people
         counters = {person: {'TP': 0, 'FP': 0, 'TN': 0, 'FN': 0} for person in people}
-        predictions = {person: [] for person in people}  # Track predictions for each person
+        confidences = {person: [] for person in people}
+        predictions = {person: [] for person in people}  # count predictions for each person
         # debug_counter = 0
         for feature, label in zip(features, labels):
             predicted_label, confidence = self.recognizer_LBPH.predict(feature)
-            predictions[people[label]].append(people[predicted_label])  # Track the prediction
-
+            confidences[people[label]].append(confidence)
+            predictions[people[label]].append(people[predicted_label])
+            #  cv.imshow(f"{people[predicted_label]}", feature)
+            #  cv.waitKey(100)
             for person in people:
                 if person == people[label]:
                     if person == people[predicted_label]:
@@ -192,6 +195,10 @@ class FaceRecognizer:
             sensitivity = counter['TP'] / (counter['TP'] + counter['FN']) if (counter['TP'] + counter[
                 'FN']) > 0 else 0
             print(f"{person}: sensitivity = {sensitivity:.4f}")
+
+        for person, confidence_list in confidences.items():
+            average_confidence = float(sum(confidence_list)/len(confidence_list))
+            print(f"{person}: confidence = {average_confidence:.4f}")
 
         # make bar chart
         for person, preds in predictions.items():
@@ -226,24 +233,21 @@ class FaceRecognizer:
         if bound_check(x1, y1, x2, y2, width, height) is False:  # add the face only if the face is in bounds
             return
         sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
-        gray_face = cv.resize(sub, (128, 128))
-        predicted_label, confidence = self.recognizer_LBPH.predict(gray_face)
-        cv.putText(gray_face,
-               str(self.people[predicted_label]),
-               (20, 20),
-               cv.FONT_HERSHEY_SIMPLEX,
-               1.0,
-               (255, 255, 255),
-               thickness=2)
-        cv.putText(gray_face,
-                   str(people[predicted_label]),
-                   (20, 20),
-                   cv.FONT_HERSHEY_SIMPLEX,
-                   1.0,
-                   (0, 0, 0),
-                   thickness=1)
-        cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
-        cv.imshow(f"{people[predicted_label]}", cv.resize(gray_face, (256, 256)))
+        resized_face = constrain_img(sub, 128)
+        padded_face = pad_image(resized_face, 128)
+        for i in range(1):  # shows that LBPH is consistent.
+            predicted_label, confidence = self.recognizer_LBPH.predict(padded_face)
+            print(predicted_label)
+            print(confidence)
+            cv.putText(padded_face,
+                       str(people[predicted_label]),
+                       (20, 20),
+                       cv.FONT_HERSHEY_SIMPLEX,
+                       1.0,
+                       (0, 0, 0),
+                       thickness=1)
+            cv.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
+            cv.imshow(f"{people[predicted_label]}", cv.resize(padded_face, (256, 256)))
         cv.waitKey(0)
 
 
@@ -367,10 +371,10 @@ def save_results(predictions, counters, output_dir='face_rec/results'):
 def debug_menu():
     print("Face Recognition for Files V2, Muk Chunpongtong 2024/8")
     face_rec = FaceRecognizer(autosave=True, autosave_directory=r"face_rec")
-    face_rec.preprocess(r"face_rec\faces", reloading=False, train_ratio=2.0, test_size=0.0)
-    face_rec.train_LBPH()
-    face_rec.preprocess(r"face_rec\test", reloading=False, train_ratio=1.0, test_size=1.0)
+    face_rec.get_LBPH()
+    face_rec.get_data()
     face_rec.test_LBPH()
+    cv.waitKey(0)
 
 
 debug_menu()

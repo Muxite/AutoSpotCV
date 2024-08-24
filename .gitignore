@@ -5,3 +5,4 @@ face_rec/recognizer_LBPH.yml
 face_rec/test_labels.npy
 face_rec/train_features.npy
 face_rec/train_labels.npy
+face_rec/videos/IVE Baddie.mp4
