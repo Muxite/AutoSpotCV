@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import os
-os.chdir(r"D:\Github\AutoSpot")
+os.chdir(r"C:\GitHub\AutoSpotCV")
 
 
 def read_img(path):

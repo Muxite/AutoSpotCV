@@ -28,7 +28,8 @@ class FaceRecognizer:
         self.autosave_directory = autosave_directory
 
     def preprocess(self, load_directory, train_ratio=1.0, reloading=False, test_size=0.1):
-        if reloading:  # if the items are already npy saved
+        reloaded = False
+        if reloading:  # if the items are already npy saved and need to shuffle
             try:
                 train_features = np.load(os.path.join(self.autosave_directory, 'train_features.npy'))
                 train_labels = np.load(os.path.join(self.autosave_directory, 'train_labels.npy'))
@@ -43,6 +44,7 @@ class FaceRecognizer:
                 self.train_features, self.test_features, self.train_labels, self.test_labels = split_data(
                     features, labels, test_size)
                 self.people = people
+
                 print("*reloaded and recombined previously saved features and labels*")
                 return
             except FileNotFoundError:
@@ -89,8 +91,9 @@ class FaceRecognizer:
                         if bound_check(x1, y1, x2, y2, width, height):  # add the face only if the face is in bounds
                             images_count += 1  # count it as a trained-upon face
                             sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
-                            gray_face = cv.resize(sub, (128, 128)) / 255.0
-                            features.append(gray_face)
+                            resized_face = constrain_img(sub, 128)
+                            padded_face = pad_image(resized_face, 128)
+                            features.append(padded_face)
                             labels.append(label)  # label it appropriately (as a number)
                     time_adder += time.time() - start_time
                 del img, fluffed_images, face_boxes
@@ -107,17 +110,36 @@ class FaceRecognizer:
             features, labels, test_size)
 
         self.people = np.array(people)
-        if self.autosave:
+        if self.autosave and reloaded is False:
             np.save(os.path.join(self.autosave_directory, 'train_features.npy'), self.train_features)
             np.save(os.path.join(self.autosave_directory, 'train_labels.npy'), self.train_labels)
             np.save(os.path.join(self.autosave_directory, 'test_features.npy'), self.test_features)
             np.save(os.path.join(self.autosave_directory, 'test_labels.npy'), self.test_labels)
             np.save(os.path.join(self.autosave_directory, 'people.npy'), self.people)
 
+    def get_data(self, directory=None):
+        path = directory or self.autosave_directory
+        if (self.test_labels is None or self.test_features is None) and path is not None:
+            print("loaded data")
+            self.train_features = np.load(os.path.join(path, 'train_features.npy'))
+            self.train_labels = np.load(os.path.join(path, 'train_labels.npy'))
+            self.test_features = np.load(os.path.join(path, 'test_features.npy'))
+            self.test_labels = np.load(os.path.join(path, 'test_labels.npy'))
+            self.people = np.load(os.path.join(path, 'people.npy'))
+
     def train_LBPH(self, directory=None):
         if self.recognizer_LBPH is None:
             self.recognizer_LBPH = cv.face.LBPHFaceRecognizer_create()
-        self.recognizer_LBPH.train(self.train_features, self.train_labels)
+            print("new lbph face recognizer created")
+        try:
+            self.recognizer_LBPH.train(self.train_features, self.train_labels)
+        except cv.error as error:
+            if error.code == -210:
+                print("data has not been loaded")
+
+            else:
+                print("unexpected error")
+            return
         print("trained LBPH recognizer")
         save_directory = directory or self.autosave_directory
         if save_directory:
@@ -139,7 +161,7 @@ class FaceRecognizer:
                 print("loading LBPH failed, training")
                 self.train_LBPH()
 
-    def test_LBPH(self, read_location=None):
+    def test_LBPH(self):
         if self.test_labels is None or self.test_features is None or self.people is None:
             print("test failed, no test feates/labels/people")
             return
@@ -204,7 +226,7 @@ class FaceRecognizer:
         if bound_check(x1, y1, x2, y2, width, height) is False:  # add the face only if the face is in bounds
             return
         sub = cv.cvtColor(img[y1:y2, x1:x2], cv.COLOR_BGR2GRAY)
-        gray_face = cv.resize(sub, (128, 128)) / 255.0
+        gray_face = cv.resize(sub, (128, 128))
         predicted_label, confidence = self.recognizer_LBPH.predict(gray_face)
         cv.putText(gray_face,
                str(self.people[predicted_label]),
@@ -270,6 +292,29 @@ def inflate(inflater, img, fluff_amount):
     return fluff_images
 
 
+def constrain_img(img, size):
+    height, width = img.shape[:2]
+    factor = min(size / width, size / height)
+    if factor >= 1:
+        return img
+    else:
+        new_width = int(width * factor)
+        new_height = int(height * factor)
+        resized_img = cv.resize(img, (new_width, new_height), interpolation=cv.INTER_AREA)
+        return resized_img
+
+
+def pad_image(img, target_size):
+    height, width = img.shape[:2]
+    delta_w = target_size - width
+    delta_h = target_size - height
+    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+    left, right = delta_w // 2, delta_w - (delta_w // 2)
+    color = [0, 0, 0]
+    new_img = cv.copyMakeBorder(img, top, bottom, left, right, cv.BORDER_CONSTANT, value=color)
+    return new_img
+
+
 def split_data(features, labels, test_size, random_seed=None):
     if random_seed is not None:
         np.random.seed(random_seed)  # random seed, otherwise set a seed for reproducibility
@@ -322,8 +367,10 @@ def save_results(predictions, counters, output_dir='face_rec/results'):
 def debug_menu():
     print("Face Recognition for Files V2, Muk Chunpongtong 2024/8")
     face_rec = FaceRecognizer(autosave=True, autosave_directory=r"face_rec")
-    face_rec.get_LBPH()
-    face_rec.test_one(file_location=r"face_rec/jh.png")
+    face_rec.preprocess(r"face_rec\faces", reloading=False, train_ratio=2.0, test_size=0.0)
+    face_rec.train_LBPH()
+    face_rec.preprocess(r"face_rec\test", reloading=False, train_ratio=1.0, test_size=1.0)
+    face_rec.test_LBPH()
 
 
 debug_menu()
