@@ -117,7 +117,7 @@ class FaceRecognizer:
             np.save(os.path.join(self.autosave_directory, 'test_labels.npy'), self.test_labels)
             np.save(os.path.join(self.autosave_directory, 'people.npy'), self.people)
 
-    def get_data(self, directory=None):
+    def get_data(self, directory=None): # load data from directory
         path = directory or self.autosave_directory
         if (self.test_labels is None or self.test_features is None) and path is not None:
             print("loaded data")
@@ -127,7 +127,7 @@ class FaceRecognizer:
             self.test_labels = np.load(os.path.join(path, 'test_labels.npy'))
             self.people = np.load(os.path.join(path, 'people.npy'))
 
-    def train_LBPH(self, directory=None):
+    def train_LBPH(self, directory=None):  # create a new LBPH face recognizer if there isnt one already.
         if self.recognizer_LBPH is None:
             self.recognizer_LBPH = cv.face.LBPHFaceRecognizer_create()
             print("new lbph face recognizer created")
@@ -142,7 +142,7 @@ class FaceRecognizer:
             return
         print("trained LBPH recognizer")
         save_directory = directory or self.autosave_directory
-        if save_directory:
+        if save_directory:  # save it for reloading later
             print("saving...")
             self.recognizer_LBPH.save(os.path.join(save_directory, "recognizer_LBPH.yml"))
             print("saving complete")
@@ -165,7 +165,7 @@ class FaceRecognizer:
         if self.test_labels is None or self.test_features is None or self.people is None:
             print("test failed, no test features/labels/people")
             return
-        net = cv.dnn.readNetFromCaffe(configFile, modelFile)
+        net = cv.dnn.readNetFromCaffe(configFile, modelFile)  # set up face detection net
         net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
         net.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA)
         features, labels, people = self.test_features, self.test_labels, self.people
@@ -217,7 +217,7 @@ class FaceRecognizer:
         save_results(predictions, counters)
         plt.show()
 
-    def test_one(self, file_location):
+    def test_one(self, file_location):  # test 1 img face loaded from a directory
         self.people = people = np.load(os.path.join(self.autosave_directory, 'people.npy'))
         net = cv.dnn.readNetFromCaffe(configFile, modelFile)
         net.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
@@ -283,8 +283,7 @@ def face_detect_dnn(net, img, threshold=0.7):
     return face_boxes
 
 
-def inflate(inflater, img, fluff_amount):
-    # ensure the image is in BGR format
+def inflate(inflater, img, fluff_amount):  # return a list of augmented img including the original
     fluff_images = [img]  # these are the augmented images (make sure to add original)
     img_array = np.expand_dims(img, axis=0)  # add batch dimension
     if fluff_amount > 1:
@@ -296,7 +295,7 @@ def inflate(inflater, img, fluff_amount):
     return fluff_images
 
 
-def constrain_img(img, size):
+def constrain_img(img, size):  # scale img down with black bars
     height, width = img.shape[:2]
     factor = min(size / width, size / height)
     if factor >= 1:
@@ -339,17 +338,17 @@ def split_data(features, labels, test_size, random_seed=None):
 
 
 def save_results(predictions, counters, output_dir='face_rec/results'):
-    # Create the output directory if it doesn't exist
+    # create output directory if it doesnt exist.
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Save sensitivity values to a text file
+    # save the numerical sensitivity results
     with open(os.path.join(output_dir, 'sensitivity.txt'), 'w') as f:
         for person, counter in counters.items():
             sensitivity = counter['TP'] / (counter['TP'] + counter['FN']) if (counter['TP'] + counter['FN']) > 0 else 0
             f.write(f"{person}: sensitivity = {sensitivity:.4f}\n")
 
-    # Generate and save bar charts
+    # generate and save bar charts as png
     for person, preds in predictions.items():
         plt.figure(figsize=(4, 4))
         unique_preds, counts = np.unique(preds, return_counts=True)
