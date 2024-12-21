@@ -88,6 +88,7 @@ class FanCamMaker:
                 # sort face_boxes by proximity to previous box (cheaper than running recognize())
                 sorted_face_boxes = sorted(face_boxes,
                                            key=lambda box: get_distance(get_middle(*prev_box), get_middle(*box)))
+                queue.append(sorted_face_boxes)
                 for face_box in sorted_face_boxes:
                     # have the previous recognition results and boxes stored
                     # if this chain has a lot of the target recognition result
